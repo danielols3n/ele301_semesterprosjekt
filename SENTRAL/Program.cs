@@ -1,7 +1,9 @@
 ﻿using System.Net.Sockets;
 using System.Net;
 using System.Text;
-using static System.Runtime.InteropServices.JavaScript.JSType;
+using Npgsql;
+using System;
+using System.Data;
 
 namespace SENTRAL
 {
@@ -9,8 +11,34 @@ namespace SENTRAL
     {
         const int maksAntallBytes = 1024; // Maks antall bytes i en melding
 
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
+            using var connection = new NpgsqlConnection(connectionString);
+
+            var sql = @"SELECT
+                            KortID
+                        FROM
+                            bruker";
+
+            try
+            {
+                connection.Open();
+
+                using var cmd = new NpgsqlCommand(sql, connection);
+
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                while (await reader.ReadAsync())
+                {
+                    var kortID = reader.GetString(0);
+
+                    Console.WriteLine($"{kortID}");
+                }
+            } catch (NpgsqlException ex)
+            {
+                Console.WriteLine($"Error: {ex.Message}");
+            }
+
             Socket lytteSokkel = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             IPEndPoint serverEP = new IPEndPoint(IPAddress.Parse("192.168.1.86"), 9050);
             lytteSokkel.Bind(serverEP);
@@ -130,6 +158,23 @@ namespace SENTRAL
             }
         }
 
+        static DataTable HentRader(string sql, params NpgsqlParameter[] parameter)
+        {
+            var connectionString = "Server=ider-database.westeurope.cloudapp.azure.com;Port=5433;Database=h184446;User Id=h184446;Password=pass;";
+            using var connection = new NpgsqlConnection(connectionString);
+            connection.Open();
+
+            using var cmd = new NpgsqlCommand(sql, connection);
+            cmd.Parameters.AddRange(parameter);
+
+            using var reader = cmd.ExecuteReader();
+
+            DataTable tabell = new DataTable();
+            tabell.Load(reader);
+
+            return tabell;
+        }
+
         static string TolkMelding(string mottattTekst)
         {
             string[] slicedMessage = mottattTekst.Split(';');
@@ -152,7 +197,6 @@ namespace SENTRAL
                     {
                         return "FEIL;UKJENT_KORTLESER";
                     }
-                    break;
                 case "REQ":
                     // Sjekker at antall felt stemmer med meldingstype
                     if (slicedMessage.Length != 4)
@@ -168,7 +212,6 @@ namespace SENTRAL
                     {
                         return "AVVIST;FEIL_PIN";
                     }
-                    break;
                 case "ALARM":
                     // Sjekker at antall felt stemmer med meldingstype
                     if (slicedMessage.Length != 4)
@@ -177,7 +220,6 @@ namespace SENTRAL
                     }
 
                     return "-";
-                    break;
                 case "ALARMSLUTT":
                     // Sjekker at antall felt stemmer med meldingstype
                     if (slicedMessage.Length != 3)
@@ -186,10 +228,8 @@ namespace SENTRAL
                     }
 
                     return "-";
-                    break;
                 default:
                     return "FEIL";
-                    break;
             }
         }
     }
