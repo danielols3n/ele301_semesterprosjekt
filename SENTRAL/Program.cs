@@ -52,7 +52,7 @@ namespace SENTRAL
                     // Viser mottatt tekst på skjerm
                     Console.WriteLine(mottattTekst);
 
-                    sendtTekst = ReverserTekst(mottattTekst);
+                    sendtTekst = TolkMelding(mottattTekst);
 
                     // Reversert tekst sendes tilbake til klient
                     SendData(sendtTekst, kommSokkel, out harForbindelse);
@@ -133,22 +133,63 @@ namespace SENTRAL
         static string TolkMelding(string mottattTekst)
         {
             string[] slicedMessage = mottattTekst.Split(';');
+            bool gyldig = false;
 
             switch (slicedMessage[0])
             {
                 case "REG":
+                    // Sjekker at antall felt stemmer med meldingstype
+                    if (slicedMessage.Length != 2)
+                    {
+                        return "FEIL;FELTANTALL";
+                    }
 
+                    // Sjekker at kortlesernummeret er gyldig
+                    if (gyldig)
+                    {
+                        return "REGOK";
+                    } else
+                    {
+                        return "FEIL;UKJENT_KORTLESER";
+                    }
                     break;
                 case "REQ":
+                    // Sjekker at antall felt stemmer med meldingstype
+                    if (slicedMessage.Length != 4)
+                    {
+                        return "FEIL;FELTANTALL";
+                    }
 
+                    // Sjekker REQ
+                    if (gyldig)
+                    {
+                        return "OK";
+                    } else
+                    {
+                        return "AVVIST;FEIL_PIN";
+                    }
                     break;
                 case "ALARM":
+                    // Sjekker at antall felt stemmer med meldingstype
+                    if (slicedMessage.Length != 4)
+                    {
+                        return "FEIL;FELTANTALL";
+                    }
 
+                    return "-";
                     break;
                 case "ALARMSLUTT":
+                    // Sjekker at antall felt stemmer med meldingstype
+                    if (slicedMessage.Length != 3)
+                    {
+                        return "FEIL;FELTANTALL";
+                    }
 
+                    return "-";
                     break;
-                case
+                default:
+                    return "FEIL";
+                    break;
             }
         }
     }
