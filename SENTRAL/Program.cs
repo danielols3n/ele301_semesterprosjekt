@@ -70,6 +70,9 @@ namespace SENTRAL
             string mottattTekst;
             string sendtTekst;
 
+            string hilsen = "Velkommen til en enkel testserver";
+            SendData(hilsen, kommSokkel, out harForbindelse);
+
             while (harForbindelse)
             {
                 // Mottar data fra klient
@@ -80,7 +83,7 @@ namespace SENTRAL
                     // Viser mottatt tekst på skjerm
                     Console.WriteLine(mottattTekst);
 
-                    sendtTekst = TolkMelding(mottattTekst);
+                    sendtTekst = ReverserTekst(mottattTekst);
 
                     // Reversert tekst sendes tilbake til klient
                     SendData(sendtTekst, kommSokkel, out harForbindelse);
@@ -175,7 +178,7 @@ namespace SENTRAL
             return tabell;
         }
 
-        static string TolkMelding(string mottattTekst)
+        static string ReverserTekst(string mottattTekst)
         {
             string[] slicedMessage = mottattTekst.Split(';');
             bool gyldig = false;

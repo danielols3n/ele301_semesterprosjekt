@@ -1,9 +1,8 @@
-# Visual Studio / .NET byggefiler
-bin/
-obj/
+# Visual Studio / .NET build output and IDE files
 .vs/
+[Bb]in/
+[Oo]bj/
 *.user
 *.suo
-
-# Lokalt hjelpeskript
-push-fiks.bat
+*.pdb
+*.cache
