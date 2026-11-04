@@ -1,0 +1,9 @@
+# Visual Studio / .NET byggefiler
+bin/
+obj/
+.vs/
+*.user
+*.suo
+
+# Lokalt hjelpeskript
+push-fiks.bat
