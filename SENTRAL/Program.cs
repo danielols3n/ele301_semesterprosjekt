@@ -42,6 +42,9 @@ namespace SENTRAL
             string mottattTekst;
             string sendtTekst;
 
+            string hilsen = "Velkommen til en enkel testserver";
+            SendData(hilsen, kommSokkel, out harForbindelse);
+
             while (harForbindelse)
             {
                 // Mottar data fra klient
@@ -52,7 +55,7 @@ namespace SENTRAL
                     // Viser mottatt tekst på skjerm
                     Console.WriteLine(mottattTekst);
 
-                    sendtTekst = TolkMelding(mottattTekst);
+                    sendtTekst = ReverserTekst(mottattTekst);
 
                     // Reversert tekst sendes tilbake til klient
                     SendData(sendtTekst, kommSokkel, out harForbindelse);
@@ -130,67 +133,17 @@ namespace SENTRAL
             }
         }
 
-        static string TolkMelding(string mottattTekst)
+        static string ReverserTekst(string mottattTekst)
         {
-            string[] slicedMessage = mottattTekst.Split(';');
-            bool gyldig = false;
-
-            switch (slicedMessage[0])
-            {
-                case "REG":
-                    // Sjekker at antall felt stemmer med meldingstype
-                    if (slicedMessage.Length != 2)
-                    {
-                        return "FEIL;FELTANTALL";
-                    }
-
-                    // Sjekker at kortlesernummeret er gyldig
-                    if (gyldig)
-                    {
-                        return "REGOK";
-                    } else
-                    {
-                        return "FEIL;UKJENT_KORTLESER";
-                    }
-                    break;
-                case "REQ":
-                    // Sjekker at antall felt stemmer med meldingstype
-                    if (slicedMessage.Length != 4)
-                    {
-                        return "FEIL;FELTANTALL";
-                    }
-
-                    // Sjekker REQ
-                    if (gyldig)
-                    {
-                        return "OK";
-                    } else
-                    {
-                        return "AVVIST;FEIL_PIN";
-                    }
-                    break;
-                case "ALARM":
-                    // Sjekker at antall felt stemmer med meldingstype
-                    if (slicedMessage.Length != 4)
-                    {
-                        return "FEIL;FELTANTALL";
-                    }
-
-                    return "-";
-                    break;
-                case "ALARMSLUTT":
-                    // Sjekker at antall felt stemmer med meldingstype
-                    if (slicedMessage.Length != 3)
-                    {
-                        return "FEIL;FELTANTALL";
-                    }
-
-                    return "-";
-                    break;
-                default:
-                    return "FEIL";
-                    break;
-            }
+            string sendtTekst;
+            // Reverserer det som er fått fra klient
+            Char[] mottattArray = mottattTekst.ToCharArray();
+            Array.Reverse(mottattArray);
+            StringBuilder sb = new StringBuilder();
+            foreach (char ch in mottattArray)
+                sb.Append(ch);
+            sendtTekst = sb.ToString();
+            return sendtTekst;
         }
     }
 }

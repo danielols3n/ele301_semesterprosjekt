@@ -15,7 +15,7 @@ namespace KORTLESER
             string dataFraBruker, dataFraServer;
 
             Socket klientSokkel = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            IPEndPoint serverEP = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 9050);
+            IPEndPoint serverEP = new IPEndPoint(IPAddress.Parse("192.168.1.86"), 9050);
 
             try
             {
