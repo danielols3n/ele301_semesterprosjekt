@@ -193,121 +193,146 @@ namespace SENTRAL
             switch (slicedMessage[0])
             {
                 case "REG":
-                    // Sjekker at antall felt stemmer med meldingstype
-                    if (slicedMessage.Length != 2)
                     {
-                        return "FEIL;FELTANTALL";
-                    }
+                        // Sjekker at antall felt stemmer med meldingstype
+                        if (slicedMessage.Length != 2)
+                        {
+                            return "FEIL;FELTANTALL";
+                        }
 
-                    // Sjekker at kortlesernummeret er gyldig
-                    string kortleserNummer = slicedMessage[1];
-                    sql = "SELECT KortleserNr FROM Kortleser WHERE KortleserNr = @kortleserNummer";
-                    resultat = HentRader(sql, new NpgsqlParameter("kortleserNummer", kortleserNummer));
-                    Console.WriteLine(resultat.Rows.Count);
-                    if (resultat != null && resultat.Rows.Count == 1)
-                    {
-                        gyldig = true;
-                    } else
-                    {
-                        gyldig = false;
-                    }
+                        // Sjekker at kortlesernummeret er gyldig
+                        string kortleserNummer = slicedMessage[1];
+                        sql = "SELECT KortleserNr FROM Kortleser WHERE KortleserNr = @kortleserNummer";
+                        resultat = HentRader(sql, new NpgsqlParameter("kortleserNummer", kortleserNummer));
+                        Console.WriteLine(resultat.Rows.Count);
+                        if (resultat != null && resultat.Rows.Count == 1)
+                        {
+                            gyldig = true;
+                        }
+                        else
+                        {
+                            gyldig = false;
+                        }
 
-                    if (gyldig)
-                    {
-                        return "REGOK";
-                    } else
-                    {
-                        return "FEIL;UKJENT_KORTLESER";
+                        if (gyldig)
+                        {
+                            return "REGOK";
+                        }
+                        else
+                        {
+                            return "FEIL;UKJENT_KORTLESER";
+                        }
                     }
                 case "REQ":
-                    // Sjekker at antall felt stemmer med meldingstype
-                    if (slicedMessage.Length != 4)
                     {
-                        return "FEIL;FELTANTALL";
-                    }
+                        // Sjekker at antall felt stemmer med meldingstype
+                        if (slicedMessage.Length != 4)
+                        {
+                            return "FEIL;FELTANTALL";
+                        }
 
-                    // Sjekker REQ
-                    string pin = slicedMessage[2];
-                    string kortID = slicedMessage[1];
-                    string kortleser = slicedMessage[3];
-                    sql = """
+                        // Sjekker REQ
+                        string pin = slicedMessage[2];
+                        string kortID = slicedMessage[1];
+                        string kortleser = slicedMessage[3];
+                        sql = """
                             SELECT PIN, GyldigFra, GyldigTil
                             FROM Bruker
                             WHERE KortID = @kortid
                             """;
 
-                    resultat = HentRader(sql, new NpgsqlParameter("kortid", kortID));
+                        resultat = HentRader(sql, new NpgsqlParameter("kortid", kortID));
 
-                    string? arsak;                                   // null = godkjent
+                        string? arsak;                                   // null = godkjent
 
-                    if (resultat == null)                            // Databasefeil: avvis, aldri slipp inn
-                        return "AVVIST";
+                        if (resultat == null)                            // Databasefeil: avvis, aldri slipp inn
+                            return "AVVIST";
 
 
-                    if (resultat.Rows.Count == 0)
-                        arsak = "REQ_FEIL;UKJENT_KORT";
-                    else
-                    {
-                        DataRow bruker = resultat.Rows[0];
-                        DateTime? fra = bruker.Field<DateTime?>("gyldigfra");
-                        DateTime? til = bruker.Field<DateTime?>("gyldigtil");
-                        DateTime naa = DateTime.Now;
-
-                        if (bruker.Field<string>("pin") != pin)
-                            arsak = "REQ_FEIL;FEIL_PIN";
-                        else if ((fra != null && naa < fra) || (til != null && naa > til))
-                            arsak = "REQ_FEIL;UGYLDIG_KORT";
+                        if (resultat.Rows.Count == 0)
+                            arsak = "REQ_FEIL;UKJENT_KORT";
                         else
-                            arsak = null;
-                    }
+                        {
+                            DataRow bruker = resultat.Rows[0];
+                            DateTime? fra = bruker.Field<DateTime?>("gyldigfra");
+                            DateTime? til = bruker.Field<DateTime?>("gyldigtil");
+                            DateTime naa = DateTime.Now;
+
+                            if (bruker.Field<string>("pin") != pin)
+                                arsak = "REQ_FEIL;FEIL_PIN";
+                            else if ((fra != null && naa < fra) || (til != null && naa > til))
+                                arsak = "REQ_FEIL;UGYLDIG_KORT";
+                            else
+                                arsak = null;
+                        }
 
 
-                    if (arsak == null)
-                    {
-                        sql = """
+                        if (arsak == null)
+                        {
+                            sql = """
                             INSERT INTO Adgangslogg (KortID, KortleserNr, Godkjent)
                             VALUES (@KortID, @KortleserNr, @Godkjent)
                             """;
 
-                        int antall = UtforKommando(sql, out string? feilkode,
-                            new NpgsqlParameter("KortID", kortID),
-                            new NpgsqlParameter("KortleserNr", kortleser),
-                            new NpgsqlParameter("Godkjent", true));
+                            int antall = UtforKommando(sql, out string? feilkode,
+                                new NpgsqlParameter("KortID", kortID),
+                                new NpgsqlParameter("KortleserNr", kortleser),
+                                new NpgsqlParameter("Godkjent", true));
 
-                        if (antall != -1) return "REQ_OK";
-                        return "AVVIST";
-                    } else
-                    {
-                        sql = """
+                            if (antall != -1) return "REQ_OK";
+                            return "AVVIST";
+                        }
+                        else
+                        {
+                            sql = """
                             INSERT INTO Adgangslogg (KortID, KortleserNr, Godkjent, Arsak)
                             VALUES (@KortID, @KortleserNr, @Godkjent, @Arsak)
                             """;
 
-                        int antall = UtforKommando(sql, out string? feilkode,
-                            new NpgsqlParameter("KortID", kortID),
-                            new NpgsqlParameter("KortleserNr", kortleser),
-                            new NpgsqlParameter("Godkjent", true),
-                            new NpgsqlParameter("Arsak", arsak));
+                            int antall = UtforKommando(sql, out string? feilkode,
+                                new NpgsqlParameter("KortID", kortID),
+                                new NpgsqlParameter("KortleserNr", kortleser),
+                                new NpgsqlParameter("Godkjent", true),
+                                new NpgsqlParameter("Arsak", arsak));
 
-                        if (antall != -1) return arsak;
-                        return "AVVIST";
+                            if (antall != -1) return arsak;
+                            return "AVVIST";
+                        }
                     }
                 case "ALARM":
-                    // Sjekker at antall felt stemmer med meldingstype
-                    if (slicedMessage.Length != 4)
                     {
-                        return "FEIL;FELTANTALL";
-                    }
+                        // Sjekker at antall felt stemmer med meldingstype
+                        if (slicedMessage.Length != 4)
+                        {
+                            return "FEIL;FELTANTALL";
+                        }
 
-                    return "-";
+                        string alarmType = slicedMessage[1];
+                        string kortleserNr = slicedMessage[2];
+                        string? kortID = slicedMessage[3];
+
+                        sql = """
+                            INSERT INTO Alarm (KortleserNr, AlarmType, SistKortID) 
+                            VALUES (@KortleserNr, @AlarmType, @SistKortID)
+                            """;
+
+                        int antall = UtforKommando(sql, out string? feilkode,
+                            new NpgsqlParameter("KortleserNr", kortleserNr),
+                            new NpgsqlParameter("AlarmType", alarmType),
+                            new NpgsqlParameter("SistKortID", kortID));
+
+                        return "-";
+                    }
                 case "ALARMSLUTT":
-                    // Sjekker at antall felt stemmer med meldingstype
-                    if (slicedMessage.Length != 3)
                     {
-                        return "FEIL;FELTANTALL";
-                    }
+                        // Sjekker at antall felt stemmer med meldingstype
+                        if (slicedMessage.Length != 3)
+                        {
+                            return "FEIL;FELTANTALL";
+                        }
 
-                    return "-";
+                        return "-";
+                    }
                 default:
                     return "FEIL";
             }

@@ -55,7 +55,7 @@ namespace KORTLESER
 
         static void VisKommInfo(IPEndPoint serverEP, IPEndPoint klientEP)
         {
-            Console.WriteLine($"Kommuniserer med {klientEP.Address}:{klientEP.Port}, bruker selv {serverEP.Address}:{serverEP.Port}");
+            Console.WriteLine($"Kommuniserer med {serverEP.Address}:{serverEP.Port}, bruker selv {klientEP.Address}:{klientEP.Port}");
         }
 
         static string MottaData(Socket kommSokkel, StringBuilder buffer, out bool harForbindelse)
