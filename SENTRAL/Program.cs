@@ -321,7 +321,8 @@ namespace SENTRAL
                             new NpgsqlParameter("AlarmType", alarmType),
                             new NpgsqlParameter("SistKortID", kortID));
 
-                        return "-";
+                        if (antall != -1) return "-";
+                        return $"FEIL | {feilkode}";
                     }
                 case "ALARMSLUTT":
                     {
