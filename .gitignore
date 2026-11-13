@@ -7,5 +7,3 @@
 *.pdb
 *.cache
 
-# Lokale innstillinger med databasepassord (miljøvariabelen ADGANG_DB)
-SENTRAL/Properties/launchSettings.json

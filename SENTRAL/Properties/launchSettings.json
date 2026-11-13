@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "SENTRAL": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "ADGANG_DB": ""
+      }
+    }
+  }
+}
