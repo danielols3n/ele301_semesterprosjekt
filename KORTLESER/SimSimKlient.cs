@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO.Ports;
-using System.IO;
+﻿using System.IO.Ports;
 using System.Text;
 
 namespace KORTLESER
@@ -17,16 +14,16 @@ namespace KORTLESER
         private readonly StringBuilder buffer = new StringBuilder();
         private readonly object laas = new object();
 
-        // "Dør brutt opp": potensiometerverdi over denne grensen.
-        // NB: Avklar med læreren om dette skal være felt F (termistor-slider) eller G (Potm. 1).
-        const int BRUTT_OPP_GRENSE = 500;
+        
+        // G (Potm. 1) brukes som innbruddssensor
+        internal const int BruttOppGrense = 500;
 
         // Forrige utskrevne tilstand, slik at statuslinjen bare skrives ut ved endring.
         // Potensiometerverdiene (F/G) sammenlignes ikke direkte, fordi de svinger litt hele tiden;
         // vi ser bare på om grensen for "brutt opp" er krysset.
-        private string? forrigeUtskrevneTilstand;
+        private (bool Laast, bool Aapen, bool Alarm, bool DorApen, bool BruttOpp)? forrigeUtskrevneTilstand;
 
-        public void KobleTil(string portNavn)
+        public void KobleTil(string portNavn) // Åpner valgte COM port og krever initiell status.
         {
             SerialPort port = new SerialPort(portNavn, 9600, Parity.None, 8, StopBits.One);
             port.DataReceived += DataMottatt;
@@ -47,10 +44,11 @@ namespace KORTLESER
             }
         }
 
+        // Bruker events for å la andre filer reagere på endringer.
         public event Action<SimSimStatus>? StatusMottatt;
         public event Action<string>? KommunikasjonsFeil;
 
-
+        // Metode for å ta imot serialdata og formatering.
         private void DataMottatt(object sender, SerialDataReceivedEventArgs e)
         {
             string data;
@@ -89,6 +87,7 @@ namespace KORTLESER
             }
         }
 
+        // Tolker en hel melding og varsler om statusendring.
         private void BehandleMelding(string melding)
         {
             SimSimStatus? st = SimSimStatus.Tolk(melding);
@@ -98,15 +97,14 @@ namespace KORTLESER
                 return;
             }
 
-            bool bruttOpp = st.Potm1 > BRUTT_OPP_GRENSE;
+            bool bruttOpp = st.Potm1 > BruttOppGrense;
 
             // Det som avgjør om noe "har skjedd": utgangene, dørsensoren (D6) og brutt-opp-grensen
-            string tilstand =
-                $"{st.Utganger[UT_LAAST]}|{st.Utganger[UT_AAPEN]}|{st.Utganger[UT_ALARM]}|{st.Innganger[6]}|{bruttOpp}";
+            var tilstand = (st.Utganger[UT_LAAST], st.Utganger[UT_AAPEN], st.Utganger[UT_ALARM], st.Innganger[6], bruttOpp);
 
-            if (tilstand != forrigeUtskrevneTilstand)
+            if (forrigeUtskrevneTilstand != tilstand)
             {
-                bool varBruttOpp = forrigeUtskrevneTilstand != null && forrigeUtskrevneTilstand.EndsWith("|True");
+                bool varBruttOpp = forrigeUtskrevneTilstand?.BruttOpp ?? false;
                 forrigeUtskrevneTilstand = tilstand;
 
                 Console.WriteLine(
@@ -115,7 +113,7 @@ namespace KORTLESER
                     $"D6={st.Innganger[6]}  F={st.Termistor}  G={st.Potm1}");
 
                 if (bruttOpp && !varBruttOpp)
-                    Console.WriteLine("  >>> DØR BRUTT OPP (Potm. 1 > " + BRUTT_OPP_GRENSE + ")");
+                    Console.WriteLine("  >>> DØR BRUTT OPP (Potm. 1 > " + BruttOppGrense + ")");
             }
 
             // Varsle om ny status
@@ -128,6 +126,7 @@ namespace KORTLESER
             Send($"$O{nr}{(paa ? 1 : 0)}");
         }
 
+        // Sender tekst på serial og rapporterer feil.
         public void Send(string kommando)
         {
             if (sp == null || !sp.IsOpen)
@@ -144,6 +143,7 @@ namespace KORTLESER
             }
         }
 
+        // Kobler fra serial og forkaster porten.
         public void KobleFra()
         {
             SerialPort? port = sp;
@@ -163,7 +163,7 @@ namespace KORTLESER
 
     }
 
-
+    // Lager et objekt for hver SimSim melding med verdiene under.
     class SimSimStatus
     {
         public int Node;
@@ -173,7 +173,7 @@ namespace KORTLESER
         public int Potm1;
         public int Potm2;
 
-        // Tolker en hel melding ($...#). Returnerer null hvis meldingen er ugyldig
+        // Tolker en hel melding ($...#). Returnerer null hvis meldingen er ugyldig.
         public static SimSimStatus? Tolk(string melding)
         {
             try
@@ -207,8 +207,5 @@ namespace KORTLESER
             int slutt = melding.IndexOf(til, start);
             return melding.Substring(start, slutt - start);
         }
-
-
-
     }
 }

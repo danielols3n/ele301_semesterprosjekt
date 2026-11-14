@@ -1,20 +1,28 @@
-using System.Linq;
-using System.Collections.Generic;
 using System.Collections.Concurrent;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Diagnostics;
 
 namespace KORTLESER
 {
     internal class Klient
     {
-        public static void Main(string[] args)
+        public static void Main()
         {
-            KjorKortleser();
+            try
+            {
+                KjorKortleser();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Uventet feil: " + e);
+            }
+            finally
+            {
+                Console.WriteLine("Trykk en tast for å lukke programmet...");
+                Console.ReadKey(true);
+            }
         }
 
-        // Les konfigurasjon ved oppstart
+        // Metoder for gjenkjenning av console input.
         private static string? LesKortleserNr()
         {
             while (true)
@@ -46,7 +54,7 @@ namespace KORTLESER
             pin.Length == 4 && pin.All(c =>
                 c >= '!' && c <= '~' && c != ';' && c != '#');
 
-        
+        // Oversetter Tilstandsmaskin handlinger om til SimSim kommandoer, Timer operasjoner, og nettverksforespørsler.
         static void UtforHandlinger(
             List<KortleserHandling> handlinger,
             SimSimKlient sim,
@@ -162,7 +170,7 @@ namespace KORTLESER
             }
         }
 
-
+        // Selve kortleserprogrammet
         static void KjorKortleser()
         {
             string? kortleserNr = LesKortleserNr();
@@ -205,7 +213,6 @@ namespace KORTLESER
 
             // Et gammelt OK-svar må ikke åpne døren lenge etter forespørselen.
             bool venterPaAdgangSvar = false;
-            bool svartidVarslet = false;
             Stopwatch adgangKlokke = new Stopwatch();
             TimeSpan maksSvarTid = TimeSpan.FromMilliseconds(SentralKlient.SvarTidsgrenseMs);
 
@@ -217,8 +224,8 @@ namespace KORTLESER
             TimeSpan maksStatusAlder = TimeSpan.FromSeconds(5);
 
             // Husk tidligere sensorverdier
-            bool? forrigeDorApen = null;
-            bool? forrigeBruttOpp = null;
+            bool forrigeDorApen = false;
+            bool forrigeBruttOpp = false;
 
             object sensorLaas = new object();
 
@@ -233,7 +240,7 @@ namespace KORTLESER
                     // Digital inngang D6: dørsensor
                     bool dorApen = status.Innganger[6];
 
-                    if (dorApen != (forrigeDorApen ?? false))
+                    if (dorApen != forrigeDorApen)
                     {
                         hendelsesKo.Enqueue(dorApen ? KortleserHendelse.DorApnet : KortleserHendelse.DorLukket);
                     }
@@ -241,13 +248,13 @@ namespace KORTLESER
                     forrigeDorApen = dorApen;
 
                     // Potensiometer 1: innbruddssensor
-                    bool bruttOpp = status.Potm1 > 500;
+                    bool bruttOpp = status.Potm1 > SimSimKlient.BruttOppGrense;
 
-                    if (bruttOpp && forrigeBruttOpp != true)
+                    if (bruttOpp && !forrigeBruttOpp)
                     {
                         hendelsesKo.Enqueue(KortleserHendelse.InnbruddOppdaget);
                     }
-                    else if (!bruttOpp && forrigeBruttOpp == true)
+                    else if (!bruttOpp && forrigeBruttOpp)
                     {
                         hendelsesKo.Enqueue(KortleserHendelse.InnbruddOpphort);
                     }
@@ -258,16 +265,40 @@ namespace KORTLESER
 
             try
             {
+                Stopwatch oppstartsTimer = Stopwatch.StartNew(); // Tillater to forsøk i sekundet i 10s før den gir opp
+
                 // 1. Koble til SimSim
-                sim.KobleTil(simPort);
-                simKoblet = true;
+                while (!simKoblet)
+                {
+                    try
+                    {
+                        sim.KobleTil(simPort);
+                        simKoblet = true;
+                    }
+                    catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidOperationException)
+                    {
+                        if (oppstartsTimer.Elapsed >= TimeSpan.FromSeconds(10))
+                            throw;
+
+                        Console.WriteLine("SimSim ikke klar, Prøver igjen...");
+                        Thread.Sleep(500);
+                    }
+                }
 
                 // 2. Koble til SENTRAL
-                if (!sentral.KobleTil(serverIp, 9050))
-                    return;
+                oppstartsTimer.Restart();
+                                
+                while (!sentral.KobleTil(serverIp, 9050))
+                {
+                    if (oppstartsTimer.Elapsed >= TimeSpan.FromSeconds(10))
+                    {
+                        Console.WriteLine("Kunne ikke koble til SENTRAL.");
+                        return;
+                    }
+                    Thread.Sleep(500);
+                }                
 
                 // 3. Registrer kortleser. Database-SENTRAL sender ingen velkomstmelding.
-                // Den gamle testserveren på master kan derimot sende en hilsen først.
                 Console.WriteLine("Registrerer kortleser " + kortleserNr + " hos SENTRAL ...");
                 sentral.RegistrerKortleser(kortleserNr);
                 if (!sentral.HarForbindelse)
@@ -277,11 +308,7 @@ namespace KORTLESER
                 }
 
                 string regSvar = sentral.MottaData();
-                if (regSvar.StartsWith("Velkommen", StringComparison.OrdinalIgnoreCase))
-                {
-                    Console.WriteLine("SENTRAL sendte en velkomstmelding (gammel testserver?). Venter på REG-svar.");
-                    regSvar = sentral.MottaData();
-                }
+
 
                 if (!sentral.HarForbindelse)
                 {
@@ -401,13 +428,14 @@ namespace KORTLESER
                     }
                 });
 
-
+                // Hjelpetekst
                 Console.WriteLine("g <kortID> <PIN> = Be om adgang");
                 Console.WriteLine("t = Vis tilstand og timere");
                 Console.WriteLine("q = Avslutt");
                 Console.WriteLine("Skriv kommando og trykk Enter.");
                 Console.WriteLine("Tilstand: " + tm.Tilstand);
 
+                // Hovedløkke
                 while (sentral.HarForbindelse)
                 {
                     if (simFeilKo.TryDequeue(out string? simFeil))
@@ -434,9 +462,9 @@ namespace KORTLESER
                         break;
                     }
 
-                    if (venterPaAdgangSvar && adgangKlokke.Elapsed > maksSvarTid && !svartidVarslet)
+                    if (venterPaAdgangSvar && adgangKlokke.IsRunning && adgangKlokke.Elapsed > maksSvarTid)
                     {
-                        svartidVarslet = true;
+                        adgangKlokke.Stop();
                         Console.WriteLine("Adgangsforespørselen er utløpt. Et sent OK-svar vil bli ignorert.");
                     }
 
@@ -483,8 +511,7 @@ namespace KORTLESER
                                 adgangKlokke.Elapsed <= maksSvarTid;
                             venterPaAdgangSvar = false;
                             adgangKlokke.Reset();
-                            svartidVarslet = false;
-
+                            
                             Console.WriteLine("\nSENTRAL: " + nettMelding.Svar);
 
                             if (!svarInnenFrist)
@@ -606,7 +633,6 @@ namespace KORTLESER
 
                             sisteKortID = kortID;
                             venterPaAdgangSvar = true;
-                            svartidVarslet = false;
                             adgangKlokke.Restart();
 
                             // Legg forespørselen i køen.
@@ -706,9 +732,6 @@ namespace KORTLESER
                 }
                 Console.WriteLine("KORTLESER er avsluttet.");
             }
-
         }
-
-
     }
 }
