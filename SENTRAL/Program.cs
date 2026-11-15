@@ -3,7 +3,6 @@ using System.Net;
 using System.Text;
 using Npgsql;
 using NpgsqlTypes;
-using System;
 using System.Data;
 using System.Globalization;
 using System.Security.Cryptography;
