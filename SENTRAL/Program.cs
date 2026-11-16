@@ -379,7 +379,7 @@ namespace SENTRAL
                         VisAlarm(alarmType, kortleserNr, mottatt, ingenKort ? null : kortID, antall != -1);
 
                         if (antall != -1) return "-";
-                        return $"FEIL | {feilkode}";
+                        return $"FEIL;{feilkode}";
                     }
                 case "ALARMSLUTT":
                     {
@@ -389,8 +389,8 @@ namespace SENTRAL
                             return "FEIL;FELTANTALL";
                         }
 
-                        string kortleserNr = slicedMessage[1];
-                        string alarmType = slicedMessage[2];
+                        string kortleserNr = slicedMessage[2];
+                        string alarmType = slicedMessage[1];
                         Skriv($"[{DateTime.Now:dd.MM.yyyy HH:mm:ss}] Alarm «{AlarmTekst(alarmType)}» avsluttet ved kortleser {kortleserNr}.");
                         return "-";
                     }

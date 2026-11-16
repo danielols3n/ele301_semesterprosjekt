@@ -2,9 +2,9 @@
   "profiles": {
     "SENTRAL": {
       "commandName": "Project",
-      "environmentVariables": {
-        "ADGANG_DB": "Host=localhost;Port=5432;Database=ele301;Username=postgres;Password=pass;"
-      }
+        "environmentVariables": {
+            "ADGANG_DB": ""
+        }
     }
   }
 }

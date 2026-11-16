@@ -146,7 +146,7 @@ namespace KORTLESER
             if (melding == "AVVIST" || melding.StartsWith("REQ_FEIL;"))
                 return SentralSvarType.AdgangAvvist;
 
-            if (melding == "FEIL" || melding.StartsWith("FEIL;") || melding.StartsWith("FEIL |"))
+            if (melding == "FEIL" || melding.StartsWith("FEIL;"))
                 return SentralSvarType.Feil;
 
             if (melding == "-")
@@ -179,7 +179,7 @@ namespace KORTLESER
         // Melder ifra når en alarm er avsluttet
         public void AvsluttAlarm(string kortleserNr, string alarmType)
         {
-            SendData($"ALARMSLUTT;{kortleserNr};{alarmType}");
+            SendData($"ALARMSLUTT;{alarmType};{kortleserNr}");
         }
 
 
