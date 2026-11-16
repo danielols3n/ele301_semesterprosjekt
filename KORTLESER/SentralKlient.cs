@@ -20,7 +20,7 @@ namespace KORTLESER
 
     internal class SentralKlient
     {
-        // Konstanter og variabler
+        // Tilkoblingsvariabler
         private const int maksAntallBytes = 1024; // Maks antall bytes i en melding
         public const int SvarTidsgrenseMs = 10000; // Databaseoppslag kan ta mer enn 4 sekunder.
 
@@ -30,7 +30,7 @@ namespace KORTLESER
         public bool HarForbindelse { get => harForbindelse; private set => harForbindelse = value; }
 
 
-        // Oppretter TCP-forbindelsen med SENTRAL
+        // Oppretter TCP-forbindelsen med SENTRAL (standard 127.0.0.1 for lokal testing)
         public bool KobleTil(string ipAdresse, int port)
         {
             if (!IPAddress.TryParse(ipAdresse, out IPAddress? adresse) ||
@@ -47,10 +47,10 @@ namespace KORTLESER
             {
                 sokkel.Connect(serverEP);     // Denne stopper hovedtråden frem til klienten har fått koblet seg til
                 sokkel.ReceiveTimeout = SvarTidsgrenseMs;
-                sokkel.SendTimeout = 4000;
+                sokkel.SendTimeout = 4000; 
                 HarForbindelse = true;
-
-                VisKommInfo((IPEndPoint)sokkel.RemoteEndPoint!, (IPEndPoint)sokkel.LocalEndPoint!);
+                                
+                Console.WriteLine($"Kommuniserer med {sokkel.RemoteEndPoint}, bruker selv {sokkel.LocalEndPoint}");
 
                 return true;
             }
@@ -82,7 +82,7 @@ namespace KORTLESER
             if (sokkel == null || !HarForbindelse)
                 return "";
 
-            byte[] dataSomBytes = new byte[1024];
+            byte[] dataSomBytes = new byte[maksAntallBytes];
 
             while (true)
             {
@@ -140,10 +140,10 @@ namespace KORTLESER
             if (melding == "REGOK")
                 return SentralSvarType.Registrert;
 
-            if (melding == "REQ_OK" || melding == "OK")
+            if (melding == "REQ_OK")
                 return SentralSvarType.AdgangGodkjent;
 
-            if (melding == "AVVIST" || melding.StartsWith("AVVIST;") || melding.StartsWith("REQ_FEIL;"))
+            if (melding == "AVVIST" || melding.StartsWith("REQ_FEIL;"))
                 return SentralSvarType.AdgangAvvist;
 
             if (melding == "FEIL" || melding.StartsWith("FEIL;") || melding.StartsWith("FEIL |"))
@@ -157,7 +157,7 @@ namespace KORTLESER
 
 
 
-        // Hjelpemetoder for å gjøre meldinger enklere:
+        // Hjelpemetoder for å gjøre meldinger enklere (litt abstraksjon)
         // Registrerer Kortleseren hos SENTRAL
         public void RegistrerKortleser(string kortleserNr)
         {

@@ -19,7 +19,13 @@ namespace SENTRAL
         // Oppgaven sier 10; kan reduseres ved testing.
         const int grenseAvvisteForsok = 10;
 
-        const string connectionString = "Server=ider-database.westeurope.cloudapp.azure.com;Port=5433;Database=h184446;User Id=h184446;Password=pass;";
+        // Navnet på miljøvariabelen som inneholder hele tilkoblingsstrengen til databasen.
+        // Tilkoblingsstrengen (med passord) ligger ikke i koden, slik at den ikke havner i git
+        // eller i leveransen. Se Properties/launchSettings.json og brukerveiledningen i rapporten.
+        const string dbMiljoVariabel = "ADGANG_DB";
+
+        // Settes ved oppstart i Main fra miljøvariabelen over.
+        static string connectionString = "";
 
         // Låses når flere tråder skriver til konsollen samtidig, slik at alarmutskrifter
         // ikke blandes med rapporter.
@@ -27,6 +33,17 @@ namespace SENTRAL
 
         static void Main(string[] args)
         {
+            // Hent tilkoblingsstrengen før noe annet startes; uten den kan SENTRAL ikke gjøre noe nyttig.
+            string? dbStreng = Environment.GetEnvironmentVariable(dbMiljoVariabel);
+            if (string.IsNullOrWhiteSpace(dbStreng))
+            {
+                Console.WriteLine($"Feil: miljøvariabelen {dbMiljoVariabel} er ikke satt.");
+                Console.WriteLine("Den skal inneholde hele tilkoblingsstrengen til PostgreSQL, f.eks.:");
+                Console.WriteLine("  Server=<vert>;Port=5432;Database=<database>;User Id=<bruker>;Password=<passord>;");
+                return;
+            }
+            connectionString = dbStreng;
+
             // Lytter på alle nettverkskort, slik at SENTRAL virker på hvilken som helst PC/nettverk.
             Socket lytteSokkel = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             IPEndPoint serverEP = new IPEndPoint(IPAddress.Any, port);
